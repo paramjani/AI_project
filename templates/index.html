@@ -1,0 +1,160 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Surveillance Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(to right, #1f4037, #99f2c8);
+      color: #333;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .dashboard {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+    }
+    .box {
+      background: #fff;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    video, img {
+      width: 100%;
+      border-radius: 10px;
+    }
+    h3 {
+      margin-bottom: 15px;
+    }
+    .btn {
+      display: inline-block;
+      background-color: #1f4037;
+      color: #fff;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 10px;
+      text-decoration: none;
+    }
+    .btn:hover {
+      background-color: #14532d;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>AI Surveillance Dashboard</h1>
+    <p>Monitor factory floor with smart detection</p>
+  </div>
+  <div class="dashboard">
+    <div class="box">
+      <h3>Live Camera Feed</h3>
+      <img src="/video" alt="Live feed not available">
+      <form action="/screenshot" method="post" style="display:inline">
+        <button class="btn" type="submit">Take Screenshot</button>
+      </form>
+      <form action="/record" method="post" style="display:inline">
+        <button class="btn" type="submit">Toggle Recording</button>
+      </form>
+    </div>
+    <div class="box">
+      <h3>Recent Alerts</h3>
+      <ul>
+        <li>Helmet not detected at 12:01 PM</li>
+        <li>Person fallen at 11:58 AM</li>
+        <li>Fire risk detected at 11:55 AM</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h3>Latest Screenshot</h3>
+      <img src="/static/screenshots/latest.jpg" alt="Latest Screenshot">
+      <a class="btn" href="/download_screenshot">Download</a>
+    </div>
+    <div class="box">
+      <h3>Download Last Recording</h3>
+      <a class="btn" href="/download_video">Download Video</a>
+    </div>
+    <div class="box">
+      <h3>Alert Statistics</h3>
+      <canvas id="alertChart" width="400" height="200"></canvas>
+    </div>
+    <div class="box">
+      <h3>AI Detection Status</h3>
+      <div id="aiStatus" style="font-weight: bold; font-size: 18px; margin-bottom: 10px;">
+        🔍 Analyzing live feed...
+      </div>
+      <ul id="liveDetections">
+        <li>Waiting for detection results...</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h3>System Alerts</h3>
+      <audio id="alertSound" src="/static/sound/alert.mp3" preload="auto"></audio>
+      <p>If a fire or fall is detected, you'll hear an alert sound.</p>
+    </div>
+  </div>
+
+  <script>
+    fetch('/alert_stats')
+      .then(response => response.json())
+      .then(data => {
+        const ctx = document.getElementById('alertChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: Object.keys(data),
+            datasets: [{
+              label: 'Alert Count',
+              data: Object.values(data),
+              backgroundColor: ['#ff6b6b', '#ffa502', '#1e90ff']
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: { beginAtZero: true }
+            }
+          }
+        });
+      });
+
+    function updateAIDetections() {
+      fetch('/latest_alerts')
+        .then(res => res.json())
+        .then(data => {
+          const list = document.getElementById('liveDetections');
+          list.innerHTML = '';
+          if (data.length === 0) {
+            list.innerHTML = '<li>No current detections</li>';
+          } else {
+            data.forEach(item => {
+              const li = document.createElement('li');
+              li.textContent = `${item.class} detected at ${item.time}`;
+              list.appendChild(li);
+              if (['fire', 'fall'].includes(item.class.toLowerCase())) {
+                document.getElementById('alertSound').play();
+              }
+            });
+          }
+        }).catch(() => {
+          document.getElementById('liveDetections').innerHTML = '<li>Error fetching detections</li>';
+        });
+    }
+
+    setInterval(updateAIDetections, 5000);
+  </script>
+</body>
+</html>
